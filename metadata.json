@@ -1,0 +1,5 @@
+{
+  "name": "CurriAlign - Course Outcome & Industry Mapping",
+  "description": "A sophisticated tool to evaluate academic curriculum alignment with industry standards using AI-powered NLP. Extracts topics, maps subjects to industry skills, and calculates relative subject importance.",
+  "requestFramePermissions": []
+}
