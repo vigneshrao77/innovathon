@@ -10,6 +10,9 @@ import {
   Tags, Cpu, Info, ChevronRight, Hash 
 } from 'lucide-react';
 
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+
 interface ResultsDashboardProps {
   result: AnalysisResult;
 }
@@ -68,8 +71,54 @@ const SkillBadgeList: React.FC<{ skills: string[], color: string }> = ({ skills,
 };
 
 const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result }) => {
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+  const handleExportRawData = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "curriculum_analysis_result.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsExportingPDF(true);
+    try {
+      const element = document.getElementById('results-dashboard');
+      if (!element) return;
+      
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      let heightLeft = pdfHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pdf.internal.pageSize.getHeight();
+
+      while (heightLeft >= 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pdf.internal.pageSize.getHeight();
+      }
+      
+      pdf.save('curriculum_analysis_report.pdf');
+    } catch (err) {
+      console.error('Error generating PDF', err);
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-1000 pb-20">
+    <div id="results-dashboard" className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-1000 pb-20">
       {/* Header Info */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-6 pb-8 border-b border-slate-200">
         <div className="space-y-2">
@@ -80,12 +129,19 @@ const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result }) => {
           </p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+          <button 
+            onClick={handleExportRawData}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+          >
             <FileJson className="w-4 h-4 text-blue-600" />
             Export Raw Data
           </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
-            Download PDF Report
+          <button 
+            onClick={handleDownloadPDF}
+            disabled={isExportingPDF}
+            className={`flex items-center gap-2 px-5 py-2.5 ${isExportingPDF ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-200`}
+          >
+            {isExportingPDF ? 'Generating...' : 'Download PDF Report'}
           </button>
         </div>
       </div>
